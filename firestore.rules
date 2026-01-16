@@ -1,0 +1,107 @@
+/**
+ * This ruleset enforces a shared data model for a global inventory system.
+ * All authenticated users can read the entire inventory, promoting a collaborative
+ * environment. However, write permissions (create, update, delete) are strictly
+ * controlled to maintain data integrity and clear accountability.
+ *
+ * Core Philosophy:
+ * The security model is "Authenticated-Read, Owner-Write". Any user who has signed
+ * in (including via anonymous authentication) can view all inventory items. This
+ * facilitates a shared, global view of the inventory. Write operations are restricted
+ * to the user who last modified an item, ensuring that changes are intentional
+ * and auditable.
+ *
+ * Data Structure:
+ * The data is organized in a single, flat top-level collection:
+ * - /inventory_items/{inventoryItemId}
+ * This simple structure is efficient for querying and aligns with the global,
+ * shared nature of the data.
+ *
+ * Key Security Decisions:
+ * - Authenticated Access Only: No operation is permitted for unauthenticated users.
+ *   A user must be signed in to read or write any data.
+ * - Global Read Access: All authenticated users are granted `get` and `list`
+ *   permissions on the entire `/inventory_items` collection.
+ * - Ownership-Based Writes: A user can only create an item if they set themselves
+ *   as the `lastUpdatedBy` user. To update or delete an existing item, a user's
+ *   authenticated UID must match the `lastUpdatedBy` field on that document. This
+ *   field acts as a dynamic ownership record.
+ *
+ * Denormalization for Authorization:
+ * To ensure fast and secure authorization checks, each document in the
+ * `/inventory_items` collection contains a `lastUpdatedBy` field. This field
+ * stores the UID of the user who performed the last write operation. Security
+ * rules can then directly inspect this field on the document being accessed,
+ * avoiding slow, costly, and sometimes impossible lookups to other collections.
+ *
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     * All operations in this application require a user to be signed in.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the requesting user's UID matches the provided userId.
+     * This is the fundamental check for ownership.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on an existing document.
+     * Used for update and delete operations to prevent writes to non-existent data.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    // ----------------------------------------------------------------------
+    // Collection Rules
+    // ----------------------------------------------------------------------
+
+    /**
+     * @description
+     *   Rules for the global inventory. Allows any authenticated user to read
+     *   all items, but restricts writes based on the `lastUpdatedBy` field.
+     */
+    match /inventory_items/{inventoryItemId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.lastUpdatedBy == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.lastUpdatedBy) && request.resource.data.lastUpdatedBy == request.auth.uid;
+      allow delete: if isExistingOwner(resource.data.lastUpdatedBy);
+    }
+
+    /**
+     * @description
+     *   Rules for the shared "Needs" list. Allows any authenticated user to read
+     *   all items, but restricts writes to the user who added the item.
+     */
+    match /need_items/{needItemId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.addedBy == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.addedBy);
+      allow delete: if isExistingOwner(resource.data.addedBy);
+    }
+    
+    /**
+      * @description
+      *   Rules for user profiles. Allows users to create, read, and update their own
+      *   profile document. Access to other user profiles is disallowed.
+      */
+    match /users/{userId} {
+      allow read, create, update: if isOwner(userId);
+    }
+  }
+}

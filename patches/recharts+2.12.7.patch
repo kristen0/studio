@@ -1,0 +1,26 @@
+diff --git a/node_modules/recharts/es6/util/ReactUtils.js b/node_modules/recharts/es6/util/ReactUtils.js
+index 4515569..0132890 100644
+--- a/node_modules/recharts/es6/util/ReactUtils.js
++++ b/node_modules/recharts/es6/util/ReactUtils.js
+@@ -299,7 +299,7 @@ export var findChildByType = function findChildByType(children, type) {
+   var result = [];
+   var targetType = getDisplayName(type);
+   react.Children.forEach(children, function (child) {
+-    var childType = getDisplayName(child.type);
++    var childType = getDisplayName(child === null || child === void 0 ? void 0 : child.type);
+ 
+     if (childType === targetType) {
+       result.push(child);
+diff --git a/node_modules/recharts/lib/util/ReactUtils.js b/node_modules/recharts/lib/util/ReactUtils.js
+index 033f9ae..f258167 100644
+--- a/node_modules/recharts/lib/util/ReactUtils.js
++++ b/node_modules/recharts/lib/util/ReactUtils.js
+@@ -342,7 +342,7 @@ var findChildByType = exports.findChildByType = function findChildByType(childr
+   var result = [];
+   var targetType = getDisplayName(type);
+   _react.Children.forEach(children, function (child) {
+-    var childType = getDisplayName(child.type);
++    var childType = getDisplayName(child === null || child === void 0 ? void 0 : child.type);
+ 
+     if (childType === targetType) {
+       result.push(child);

@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "InventoryItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InventoryItem",
+      "type": "object",
+      "description": "Represents an item in the user's inventory.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the InventoryItem entity."
+        },
+        "itemName": {
+          "type": "string",
+          "description": "The name of the inventory item."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the inventory item."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the inventory item."
+        },
+        "purchaseDate": {
+          "type": "string",
+          "description": "The date the item was purchased.",
+          "format": "date-time"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "The expiry date of the inventory item.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the inventory item."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The date and time the item was last updated.",
+          "format": "date-time"
+        },
+        "lastUpdatedBy": {
+          "type": "string",
+          "description": "The user ID of the person who last updated the item."
+        }
+      },
+      "required": [
+        "id",
+        "itemName",
+        "quantity",
+        "category",
+        "expiryDate"
+      ]
+    },
+    "NeedItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "NeedItem",
+      "type": "object",
+      "description": "Represents an item that is needed and out of stock.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the NeedItem entity."
+        },
+        "itemName": {
+          "type": "string",
+          "description": "The name of the needed item."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the needed item."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the item was added to the needs list.",
+          "format": "date-time"
+        },
+        "addedBy": {
+          "type": "string",
+          "description": "The user ID of the person who added the item."
+        },
+        "addedByName": {
+          "type": "string",
+          "description": "The display name of the user who added the item."
+        }
+      },
+      "required": [
+        "id",
+        "itemName",
+        "category",
+        "addedBy"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/inventory_items/{inventoryItemId}",
+        "definition": {
+          "entityName": "InventoryItem",
+          "schema": {
+            "$ref": "#/backend/entities/InventoryItem"
+          },
+          "description": "Collection of inventory items, each item is accessible and manageable by the user that last updated it. Includes denormalized 'lastUpdatedBy' field for authorization independence.",
+          "params": [
+            {
+              "name": "inventoryItemId",
+              "description": "The unique identifier for the inventory item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/need_items/{needItemId}",
+        "definition": {
+          "entityName": "NeedItem",
+          "schema": {
+            "$ref": "#/backend/entities/NeedItem"
+          },
+          "description": "Collection of items that are needed (out of stock). Each item is manageable by the user who added it.",
+          "params": [
+            {
+              "name": "needItemId",
+              "description": "The unique identifier for the need item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "Based on the application requirements, specifically the error related to Firebase Authentication, the need for shared inventory data, and the overall feature set of ShelfWatch, a flat collection structure with appropriate security rules and denormalization is recommended. The core entity is `InventoryItem`.  Since all authenticated users share a single, global inventory (as explicitly stated in the instructions), we avoid path-based ownership. A single `inventory_items` collection houses all items. To handle authentication, every `InventoryItem` will have a `lastUpdatedBy` field corresponding to a user's `uid` in Firebase Auth.\n\n**Authorization Independence (CRITICAL):** The `lastUpdatedBy` field within each `InventoryItem` document denormalizes the user's ownership.  This eliminates the need for security rules to perform `get()` operations to check user roles or ownership in other collections.  Rules can directly verify `request.auth.uid == resource.data.lastUpdatedBy`.\n\n**Clarity of Intent (Debuggability):** The structure is flat and explicit.  The security rules will be simple and directly tied to the `lastUpdatedBy` field.\n\n**DBAC (No Custom Claims):** Authentication relies solely on `request.auth.uid` and database content.\n\n**QAPs (Rules are not Filters):** The flat collection structure allows for simple, secure `list` operations.  Rules can enforce that users can only `list` items, without complex filtering logic inside the rules themselves.  The filtering (e.g., 'Show only my items') will be done in the application code, after the data is retrieved, rather than attempting to push that logic into the rules.\n\n**Invariants:**  The `lastUpdatedBy` field ensures the integrity of ownership and updates. Timestamps (`updatedAt`) will be managed within the application logic and enforced through validation rules."
+  }
+}
