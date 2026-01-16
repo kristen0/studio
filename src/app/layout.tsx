@@ -42,10 +42,10 @@ function AuthAwareLayout({ children }: { children: React.ReactNode }) {
     }
     
     return (
-        <InventoryProvider>
+        <>
             {children}
             <Toaster />
-        </InventoryProvider>
+        </>
     );
 }
 

@@ -8,6 +8,7 @@ import { Header } from '@/components/layout/header';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { NeedsProvider } from '@/context/NeedsContext';
+import { InventoryProvider } from '@/context/InventoryContext';
 
 export default function InventoryLayout({ children }: { children: ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -32,16 +33,18 @@ export default function InventoryLayout({ children }: { children: ReactNode }) {
 
   // If user is authenticated, render the layout.
   return (
-    <NeedsProvider>
-      <div className="flex min-h-screen w-full flex-col bg-background">
-        <Header />
-        <main className={cn(
-          "flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6 lg:p-8",
-          "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-muted/30 to-background"
-        )}>
-          {children}
-        </main>
-      </div>
-    </NeedsProvider>
+    <InventoryProvider>
+      <NeedsProvider>
+        <div className="flex min-h-screen w-full flex-col bg-background">
+          <Header />
+          <main className={cn(
+            "flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6 lg:p-8",
+            "bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-muted/30 to-background"
+          )}>
+            {children}
+          </main>
+        </div>
+      </NeedsProvider>
+    </InventoryProvider>
   );
 }
